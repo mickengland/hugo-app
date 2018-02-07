@@ -12,7 +12,7 @@ podTemplate(label: 'pod-hugo-app', containers: [
 
     node('pod-hugo-app') {
 
-        def DOCKER_HUB_ACCOUNT = 'smesch'
+        def DOCKER_HUB_ACCOUNT = 'mickengland'
         def DOCKER_IMAGE_NAME = 'hugo-app-jenkins'
         def K8S_DEPLOYMENT_NAME = 'hugo-app'
 
@@ -33,6 +33,11 @@ podTemplate(label: 'pod-hugo-app', containers: [
 
             container('docker') {
                 stage('Docker Build & Push Current & Latest Versions') {
+					withCredentials([[$class: 'UsernamePasswordMultiBinding',
+                        credentialsId: 'MEDockerHub',
+                        usernameVariable: 'DOCKER_HUB_USER',
+                        passwordVariable: 'DOCKER_HUB_PASSWORD']]) {
+
                     sh ("docker build -t ${DOCKER_HUB_ACCOUNT}/${DOCKER_IMAGE_NAME}:${env.BUILD_NUMBER} .")
                     sh ("docker push ${DOCKER_HUB_ACCOUNT}/${DOCKER_IMAGE_NAME}:${env.BUILD_NUMBER}")
                     sh ("docker tag ${DOCKER_HUB_ACCOUNT}/${DOCKER_IMAGE_NAME}:${env.BUILD_NUMBER} ${DOCKER_HUB_ACCOUNT}/${DOCKER_IMAGE_NAME}:latest")
