@@ -1,4 +1,3 @@
-#!groovy
 podTemplate(label: 'pod-hugo-app', containers: [
     containerTemplate(name: 'hugo', image: 'smesch/hugo', ttyEnabled: true, command: 'cat'),
     containerTemplate(name: 'html-proofer', image: 'smesch/html-proofer', ttyEnabled: true, command: 'cat'),
@@ -8,23 +7,23 @@ podTemplate(label: 'pod-hugo-app', containers: [
         envVars: [containerEnvVar(key: 'DOCKER_CONFIG', value: '/tmp/'),])],
         volumes: [secretVolume(secretName: 'docker-config', mountPath: '/tmp'),
                   hostPathVolume(hostPath: '/var/run/docker.sock', mountPath: '/var/run/docker.sock')
-  ]) {
 
+  ]) {
     node('pod-hugo-app') {
 
         def DOCKER_HUB_ACCOUNT = 'mickengland'
         def DOCKER_IMAGE_NAME = 'hugo-app-jenkins'
         def K8S_DEPLOYMENT_NAME = 'hugo-app'
 
-        stage('Clone Hugo App Repository') {
+        stage('Clone Hug App Repository') {
             checkout scm
- 
-            container('hugo') {
-                stage('Build Hugo Site') {
-                    sh ("hugo --uglyURLs")
-                }
+
+            containter('hugo')
+               stage{'Build Hugo Site') {
+                    sh ("hugo --uglyURLs") 
+               }
             }
-    
+
             container('html-proofer') {
                 stage('Validate HTML') {
                     sh ("htmlproofer public --internal-domains ${env.JOB_NAME} --external_only --only-4xx")
@@ -32,12 +31,12 @@ podTemplate(label: 'pod-hugo-app', containers: [
             }
 
             container('docker') {
-                stage('Docker Build & Push Current & Latest Versions') {
-					withCredentials([[$class: 'UsernamePasswordMultiBinding',
+
+                withCredentials([[$class: 'UsernamePasswordMultiBinding',
                         credentialsId: 'MEDockerHub',
                         usernameVariable: 'DOCKER_HUB_USER',
                         passwordVariable: 'DOCKER_HUB_PASSWORD']]) {
-
+                stage('Docker Build & Push Current & Latest Versions') {
                     sh ("docker build -t ${DOCKER_HUB_ACCOUNT}/${DOCKER_IMAGE_NAME}:${env.BUILD_NUMBER} .")
                     sh ("docker push ${DOCKER_HUB_ACCOUNT}/${DOCKER_IMAGE_NAME}:${env.BUILD_NUMBER}")
                     sh ("docker tag ${DOCKER_HUB_ACCOUNT}/${DOCKER_IMAGE_NAME}:${env.BUILD_NUMBER} ${DOCKER_HUB_ACCOUNT}/${DOCKER_IMAGE_NAME}:latest")
@@ -46,11 +45,18 @@ podTemplate(label: 'pod-hugo-app', containers: [
             }
 
             container('kubectl') {
+
+                withCredentials([[$class: 'UsernamePasswordMultiBinding',
+                        credentialsId: 'MEDockerHub',
+                        usernameVariable: 'DOCKER_HUB_USER',
+                        passwordVariable: 'DOCKER_HUB_PASSWORD']]) {
                 stage('Deploy New Build To Kubernetes') {
                     sh ("kubectl set image deployment/${K8S_DEPLOYMENT_NAME} ${K8S_DEPLOYMENT_NAME}=${DOCKER_HUB_ACCOUNT}/${DOCKER_IMAGE_NAME}:${env.BUILD_NUMBER}")
-                }
-            }
-
-        }        
+             }
+          }
+        }
+      }
     }
+  }
 }
+
